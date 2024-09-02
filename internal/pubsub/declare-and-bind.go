@@ -35,7 +35,9 @@ func DeclareAndBind(
 		return
 	}
 
-	q, err = ch.QueueDeclare(queueName, durable, autoDelete, exclusive, noWait, nil)
+	table := make(map[string]any)
+	table["x-dead-letter-exchange"] = "peril_dlx"
+	q, err = ch.QueueDeclare(queueName, durable, autoDelete, exclusive, noWait, table)
 	if err != nil {
 		return
 	}

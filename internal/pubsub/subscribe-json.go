@@ -5,9 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	amqp "github.com/rabbitmq/amqp091-go"
-	"strings"
 	"reflect"
+	"strings"
 )
+
+const Ack = 1
+const NackRequeue = 2
+const NackDiscard = 3
 
 func SubscribeJSON[T any](
 	conn *amqp.Connection,
@@ -15,7 +19,7 @@ func SubscribeJSON[T any](
 	queueName,
 	key string,
 	simpleQueueType int,
-	handler func(T),
+	handler func(T) int,
 ) (err error) {
 	fmt.Println("somebody has subscribed json to " + exchange)
 	fmt.Println("queue name is " + queueName)
@@ -40,6 +44,32 @@ func SubscribeJSON[T any](
 			if err != nil {
 				fmt.Println(err)
 				fmt.Println("(message said " + string(delivery.Body) + ")")
+
+				err = json.Unmarshal([]byte(body), &unmarshalled)
+				if err != nil {
+					fmt.Println(err)
+					fmt.Println("(message said " + string(delivery.Body) + ")")
+					continue
+				}
+
+				fmt.Println(unmarshalled)
+				acktype := handler(unmarshalled)
+				if acktype == Ack {
+					fmt.Println("ack")
+					err = delivery.Ack(false)
+				} else if acktype == NackRequeue {
+					fmt.Println("nack requeue")
+					err = delivery.Nack(false, true)
+				} else if acktype == NackDiscard {
+					fmt.Println("nack discard")
+					err = delivery.Nack(false, false)
+				}
+				if err != nil {
+					fmt.Println(err)
+					fmt.Println("(message said " + string(delivery.Body) + ")")
+				}
+				continue
+
 			}
 
 			fmt.Println("decoded message said " + string(decoded))

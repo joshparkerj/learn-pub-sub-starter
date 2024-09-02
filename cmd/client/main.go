@@ -38,6 +38,15 @@ func main() {
 		log.Fatal("subscribe json error!")
 	}
 
+	armyMovesCh, _, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, "army_moves."+username, "army_moves.*", pubsub.Transient)
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal("declare and bind error!!")
+	}
+
+	pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, "army_moves."+username, "army_moves.*", pubsub.Transient, handlerArmyMove(gameState, armyMovesCh))
+	// pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, "war", "", pubsub.Durable)
+	pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, "war", "war.*", pubsub.Durable, handlerWar(gameState))
 	for {
 		words := gamelogic.GetInput()
 		if len(words) > 0 {
@@ -55,6 +64,9 @@ func main() {
 				} else {
 					fmt.Println("Good move! 😊")
 					fmt.Println(armyMove)
+
+					pubsub.PublishJSON(armyMovesCh, routing.ExchangePerilTopic, "army_moves."+username, armyMove)
+					fmt.Println("army move was published successfully:")
 				}
 			} else if words[0] == "status" {
 				gameState.CommandStatus()
