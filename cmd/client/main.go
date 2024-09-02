@@ -1,7 +1,9 @@
 package main
 
 import (
+	"time"
 	"fmt"
+	"strconv"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/gamelogic"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/pubsub"
 	"github.com/bootdotdev/learn-pub-sub-starter/internal/routing"
@@ -45,8 +47,13 @@ func main() {
 	}
 
 	pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, "army_moves."+username, "army_moves.*", pubsub.Transient, handlerArmyMove(gameState, armyMovesCh))
-	// pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, "war", "", pubsub.Durable)
-	pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, "war", "war.*", pubsub.Durable, handlerWar(gameState))
+	logsCh, _, err := pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, routing.GameLogSlug+"."+username, pubsub.Durable)
+	if err != nil {
+		fmt.Println(err)
+		log.Fatal("declare and bind error!!")
+	}
+
+	pubsub.SubscribeJSON(conn, routing.ExchangePerilTopic, "war", "war.*", pubsub.Durable, handlerWar(gameState, logsCh))
 	for {
 		words := gamelogic.GetInput()
 		if len(words) > 0 {
@@ -73,7 +80,25 @@ func main() {
 			} else if words[0] == "help" {
 				gamelogic.PrintClientHelp()
 			} else if words[0] == "spam" {
-				fmt.Println("spamming not allowed yet!")
+				if len(words) < 2 {
+					fmt.Println("you have to say how many spams!")
+				} else {
+					n, err := strconv.Atoi(words[1])
+					if err != nil {
+						fmt.Println("you have to use an integer for the number of spams!")
+					} else {
+						for range(n) {
+							maliciousLog := gamelogic.GetMaliciousLog()
+							msg := routing.GameLog{
+								CurrentTime: time.Now(),
+								Message: maliciousLog,
+								Username: gameState.GetUsername(),
+							}
+
+							pubsub.PublishGob(logsCh, routing.ExchangePerilTopic, routing.GameLogSlug + "." + gameState.GetUsername(), msg)
+						}
+					}
+				}
 			} else if words[0] == "quit" {
 				fmt.Println("quitting...")
 				break

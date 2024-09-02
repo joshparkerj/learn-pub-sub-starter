@@ -47,8 +47,18 @@ func main() {
 
 	fmt.Println("Starting Peril server...")
 
-	///pubsub.DeclareAndBind(conn, "peril_topic", "game_logs", "game_logs.*"
-	_, _, err = pubsub.DeclareAndBind(conn, routing.ExchangePerilTopic, routing.GameLogSlug, "game_logs.*", pubsub.Durable)
+	pubsub.SubscribeGob(conn, routing.ExchangePerilTopic, routing.GameLogSlug, "game_logs.*", pubsub.Durable, func(gl routing.GameLog) int {
+		defer fmt.Print("> ")
+		fmt.Println("got gob I think")
+		err = gamelogic.WriteLog(gl)
+		if err != nil {
+			fmt.Println("error reading logs! yikes...")
+			return pubsub.NackDiscard
+		}
+
+		return pubsub.Ack
+	})
+
 	if err != nil {
 		log.Fatal("could not declare and bind the durable queue!")
 	}

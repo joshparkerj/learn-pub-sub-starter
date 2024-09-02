@@ -20,10 +20,10 @@ func handlerArmyMove(gs *gamelogic.GameState, armyMovesCh *amqp.Channel) func(ga
 
 		if moveOutcome == gamelogic.MoveOutcomeMakeWar {
 			/*
-			1. Publish a message to the "topic" exchange with the routing key $WARPREFIX.$USERNAME. 
-				routing.WarRecognitionsPrefix contains the $WARPREFIX constant, 
-				and the $USERNAME should be the name of the player consuming the move.
-			2. NackRequeue the message... Might seem crazy, but it will be fun.
+				1. Publish a message to the "topic" exchange with the routing key $WARPREFIX.$USERNAME.
+					routing.WarRecognitionsPrefix contains the $WARPREFIX constant,
+					and the $USERNAME should be the name of the player consuming the move.
+				2. NackRequeue the message... Might seem crazy, but it will be fun.
 			*/
 			fmt.Println("now to publish json with move outcome make war")
 			fmt.Println(armyMovesCh)
@@ -46,7 +46,6 @@ func handlerArmyMove(gs *gamelogic.GameState, armyMovesCh *amqp.Channel) func(ga
 
 			return pubsub.Ack
 		}
-
 
 		return pubsub.NackDiscard
 	}
